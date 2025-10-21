@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>State Polling Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .controls { 
+            margin: 20px 0; 
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        select { 
+            padding: 10px; 
+            font-size: 16px; 
+            margin: 0 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .map-container { 
+            height: 500px; 
+            margin: 20px 0;
+        }
+        .state-table { 
+            margin-top: 30px; 
+            width: 100%; 
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .state-table th, .state-table td { 
+            padding: 8px; 
+            text-align: center; 
+            border: 1px solid #ddd; 
+        }
+        .state-table th { 
+            background: #f4f4f4; 
+            font-weight: bold;
+        }
+        .state-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        h3 {
+            color: #555;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>State Polling Analysis Dashboard</h1>
+        
+        <div class="controls">
+            <label><strong>Select Metric:</strong></label>
+            <select id="metric-select">
+                <option value="democracy_world">Promote Democracy Worldwide</option>
+                <option value="israel_aid">Military Aid to Israel</option>
+                <option value="ukraine_aid">Military Aid to Ukraine</option>
+                <option value="argentina_aid">US Aid to Argentina</option>
+                <option value="obamacare">Obamacare Approval</option>
+                <option value="trump_overall">Trump Overall Approval</option>
+                <option value="trump_jobs">Trump Jobs Approval</option>
+                <option value="trump_inflation">Trump Inflation Approval</option>
+                <option value="trump_immigration">Trump Immigration Approval</option>
+                <option value="trump_foreign">Trump Foreign Policy Approval</option>
+                <option value="generic_ballot">Generic Congressional Ballot</option>
+            </select>
+        </div>
+
+        <div id="map" class="map-container"></div>
+        
+        <div id="state-details">
+            <h3>State Rankings (Top 20)</h3>
+            <table class="state-table" id="state-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>State</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody id="state-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // State polling data - all 50 states + DC
+        const stateData = [
+            {state: "Alabama", democracy_world: -2.1, israel_aid: 6.4, ukraine_aid: 26.8, argentina_aid: -39.2, obamacare: 18.7, trump_overall: 4.2, trump_jobs: 1.7, trump_inflation: -4.8, trump_immigration: 12.4, trump_foreign: 1.2, generic_ballot: -8.7},
+            {state: "Alaska", democracy_world: 1.8, israel_aid: 4.2, ukraine_aid: 29.7, argentina_aid: -37.4, obamacare: 21.4, trump_overall: -1.8, trump_jobs: -4.2, trump_inflation: -9.7, trump_immigration: 8.7, trump_foreign: -2.8, generic_ballot: -4.2},
+            {state: "Arizona", democracy_world: 2.7, israel_aid: -11.8, ukraine_aid: 34.2, argentina_aid: -37.4, obamacare: 27.3, trump_overall: -14.1, trump_jobs: -15.7, trump_inflation: -32.7, trump_immigration: 4.7, trump_foreign: -12.7, generic_ballot: 3.4},
+            {state: "Arkansas", democracy_world: -4.2, israel_aid: 8.7, ukraine_aid: 24.8, argentina_aid: -41.8, obamacare: 16.4, trump_overall: 8.4, trump_jobs: 5.7, trump_inflation: -18.4, trump_immigration: 14.8, trump_foreign: 5.9, generic_ballot: -12.4},
+            {state: "California", democracy_world: 18.4, israel_aid: -18.2, ukraine_aid: 45.7, argentina_aid: -31.2, obamacare: 42.1, trump_overall: -28.7, trump_jobs: -31.2, trump_inflation: -46.8, trump_immigration: -18.4, trump_foreign: -26.3, generic_ballot: 18.7},
+            {state: "Colorado", democracy_world: 14.2, israel_aid: -12.4, ukraine_aid: 41.8, argentina_aid: -34.1, obamacare: 36.7, trump_overall: -18.9, trump_jobs: -21.4, trump_inflation: -36.1, trump_immigration: -12.7, trump_foreign: -19.8, generic_ballot: 12.3},
+            {state: "Connecticut", democracy_world: 16.7, israel_aid: -14.8, ukraine_aid: 43.1, argentina_aid: -33.8, obamacare: 38.4, trump_overall: -24.8, trump_jobs: -27.3, trump_inflation: -42.1, trump_immigration: -16.2, trump_foreign: -23.8, generic_ballot: 15.8},
+            {state: "Delaware", democracy_world: 12.4, israel_aid: -10.7, ukraine_aid: 38.9, argentina_aid: -35.2, obamacare: 34.2, trump_overall: -20.9, trump_jobs: -23.4, trump_inflation: -38.2, trump_immigration: -14.1, trump_foreign: -21.2, generic_ballot: 13.4},
+            {state: "District of Columbia", democracy_world: 42.1, israel_aid: -34.2, ukraine_aid: 62.4, argentina_aid: -18.4, obamacare: 68.2, trump_overall: -74.8, trump_jobs: -77.3, trump_inflation: -92.1, trump_immigration: -62.4, trump_foreign: -69.8, generic_ballot: 62.4},
+            {state: "Florida", democracy_world: 4.8, israel_aid: -2.1, ukraine_aid: 31.7, argentina_aid: -36.8, obamacare: 24.8, trump_overall: -6.2, trump_jobs: -8.7, trump_inflation: -24.2, trump_immigration: 6.8, trump_foreign: -4.1, generic_ballot: -1.7},
+            {state: "Georgia", democracy_world: 14.3, israel_aid: -1.3, ukraine_aid: 36.4, argentina_aid: -33.4, obamacare: 32.1, trump_overall: -9.3, trump_jobs: -12.8, trump_inflation: -29.8, trump_immigration: 2.3, trump_foreign: -10.8, generic_ballot: 5.3},
+            {state: "Hawaii", democracy_world: 19.8, israel_aid: -16.4, ukraine_aid: 46.2, argentina_aid: -29.8, obamacare: 44.2, trump_overall: -34.8, trump_jobs: -37.3, trump_inflation: -52.1, trump_immigration: -24.1, trump_foreign: -31.7, generic_ballot: 19.8},
+            {state: "Idaho", democracy_world: -8.4, israel_aid: 12.4, ukraine_aid: 22.1, argentina_aid: -43.2, obamacare: 12.4, trump_overall: 14.8, trump_jobs: 11.7, trump_inflation: -15.2, trump_immigration: 18.9, trump_foreign: 11.2, generic_ballot: -18.9},
+            {state: "Illinois", democracy_world: 17.8, israel_aid: -16.2, ukraine_aid: 44.7, argentina_aid: -32.1, obamacare: 39.7, trump_overall: -26.8, trump_jobs: -29.3, trump_inflation: -44.1, trump_immigration: -18.8, trump_foreign: -25.8, generic_ballot: 16.2},
+            {state: "Indiana", democracy_world: -0.8, israel_aid: 3.2, ukraine_aid: 28.4, argentina_aid: -38.7, obamacare: 20.8, trump_overall: 2.4, trump_jobs: -0.7, trump_inflation: -16.2, trump_immigration: 9.3, trump_foreign: 1.9, generic_ballot: -4.1},
+            {state: "Iowa", democracy_world: -2.1, israel_aid: 3.2, ukraine_aid: 30.4, argentina_aid: -40.2, obamacare: 24.2, trump_overall: -5.8, trump_jobs: -9.7, trump_inflation: -26.7, trump_immigration: 7.7, trump_foreign: -6.7, generic_ballot: -3.1},
+            {state: "Kansas", democracy_world: -1.4, israel_aid: 4.8, ukraine_aid: 29.7, argentina_aid: -39.1, obamacare: 21.8, trump_overall: 6.4, trump_jobs: 3.7, trump_inflation: -13.6, trump_immigration: 11.6, trump_foreign: 5.2, generic_ballot: -6.4},
+            {state: "Kentucky", democracy_world: -6.2, israel_aid: 9.8, ukraine_aid: 25.7, argentina_aid: -42.1, obamacare: 17.8, trump_overall: 12.4, trump_jobs: 9.7, trump_inflation: -11.6, trump_immigration: 16.2, trump_foreign: 9.7, generic_ballot: -14.2},
+            {state: "Louisiana", democracy_world: -1.2, israel_aid: 7.4, ukraine_aid: 27.8, argentina_aid: -40.8, obamacare: 19.8, trump_overall: 10.8, trump_jobs: 7.7, trump_inflation: -12.3, trump_immigration: 13.8, trump_foreign: 8.2, generic_ballot: -9.7},
+            {state: "Maine", democracy_world: 9.2, israel_aid: -7.3, ukraine_aid: 39.4, argentina_aid: -36.4, obamacare: 31.9, trump_overall: -17.6, trump_jobs: -20.6, trump_inflation: -37.6, trump_immigration: -6.4, trump_foreign: -17.6, generic_ballot: 8.4},
+            {state: "Maryland", democracy_world: 21.4, israel_aid: -18.7, ukraine_aid: 47.2, argentina_aid: -30.1, obamacare: 45.1, trump_overall: -36.8, trump_jobs: -39.3, trump_inflation: -54.1, trump_immigration: -26.1, trump_foreign: -33.7, generic_ballot: 21.4},
+            {state: "Massachusetts", democracy_world: 18.7, israel_aid: -17.1, ukraine_aid: 45.1, argentina_aid: -31.8, obamacare: 41.2, trump_overall: -28.1, trump_jobs: -30.7, trump_inflation: -45.4, trump_immigration: -18.2, trump_foreign: -25.8, generic_ballot: 18.7},
+            {state: "Michigan", democracy_world: 3.4, israel_aid: -10.2, ukraine_aid: 34.8, argentina_aid: -39.1, obamacare: 28.7, trump_overall: -14.8, trump_jobs: -16.8, trump_inflation: -33.8, trump_immigration: -3.8, trump_foreign: -13.8, generic_ballot: 6.8},
+            {state: "Minnesota", democracy_world: 12.4, israel_aid: -7.9, ukraine_aid: 41.2, argentina_aid: -35.1, obamacare: 33.7, trump_overall: -18.2, trump_jobs: -21.8, trump_inflation: -38.8, trump_immigration: -10.9, trump_foreign: -18.8, generic_ballot: 9.8},
+            {state: "Mississippi", democracy_world: -3.8, israel_aid: 8.2, ukraine_aid: 26.8, argentina_aid: -41.2, obamacare: 18.4, trump_overall: 13.8, trump_jobs: 10.7, trump_inflation: -10.2, trump_immigration: 15.8, trump_foreign: 11.2, generic_ballot: -11.7},
+            {state: "Missouri", democracy_world: -1.8, israel_aid: 6.2, ukraine_aid: 28.9, argentina_aid: -39.8, obamacare: 20.8, trump_overall: 8.7, trump_jobs: 5.7, trump_inflation: -13.3, trump_immigration: 12.9, trump_foreign: 6.4, generic_ballot: -8.2},
+            {state: "Montana", democracy_world: -7.1, israel_aid: 11.2, ukraine_aid: 23.4, argentina_aid: -42.8, obamacare: 15.8, trump_overall: 16.8, trump_jobs: 13.7, trump_inflation: -9.2, trump_immigration: 19.8, trump_foreign: 13.2, generic_ballot: -16.4},
+            {state: "Nebraska", democracy_world: -2.8, israel_aid: 2.8, ukraine_aid: 29.1, argentina_aid: -39.7, obamacare: 22.4, trump_overall: 4.8, trump_jobs: 1.7, trump_inflation: -15.2, trump_immigration: 8.2, trump_foreign: 2.8, generic_ballot: -5.1},
+            {state: "Nevada", democracy_world: 3.9, israel_aid: -9.7, ukraine_aid: 35.1, argentina_aid: -38.7, obamacare: 28.9, trump_overall: -15.7, trump_jobs: -18.9, trump_inflation: -35.9, trump_immigration: -7.1, trump_foreign: -15.9, generic_ballot: 4.7},
+            {state: "New Hampshire", democracy_world: 13.7, israel_aid: -12.4, ukraine_aid: 42.7, argentina_aid: -34.8, obamacare: 34.2, trump_overall: -20.9, trump_jobs: -23.9, trump_inflation: -40.9, trump_immigration: -14.8, trump_foreign: -20.9, generic_ballot: 10.7},
+            {state: "New Jersey", democracy_world: 16.2, israel_aid: -14.1, ukraine_aid: 43.8, argentina_aid: -32.8, obamacare: 38.9, trump_overall: -25.7, trump_jobs: -28.3, trump_inflation: -43.2, trump_immigration: -15.8, trump_foreign: -23.4, generic_ballot: 16.8},
+            {state: "New Mexico", democracy_world: 8.4, israel_aid: -6.2, ukraine_aid: 37.8, argentina_aid: -34.7, obamacare: 32.8, trump_overall: -12.8, trump_jobs: -15.4, trump_inflation: -32.6, trump_immigration: -4.4, trump_foreign: -12.9, generic_ballot: 11.8},
+            {state: "New York", democracy_world: 17.8, israel_aid: -15.2, ukraine_aid: 44.7, argentina_aid: -31.9, obamacare: 40.7, trump_overall: -27.4, trump_jobs: -30.1, trump_inflation: -44.8, trump_immigration: -17.7, trump_foreign: -25.2, generic_ballot: 17.8},
+            {state: "North Carolina", democracy_world: 10.1, israel_aid: 0.8, ukraine_aid: 37.8, argentina_aid: -34.2, obamacare: 31.4, trump_overall: -7.4, trump_jobs: -11.4, trump_inflation: -28.4, trump_immigration: 5.8, trump_foreign: -8.4, generic_ballot: 2.2},
+            {state: "North Dakota", democracy_world: -8.7, israel_aid: 13.7, ukraine_aid: 21.8, argentina_aid: -44.1, obamacare: 13.4, trump_overall: 18.8, trump_jobs: 15.7, trump_inflation: -7.2, trump_immigration: 21.8, trump_foreign: 15.3, generic_ballot: -19.7},
+            {state: "Ohio", democracy_world: -1.8, israel_aid: 1.4, ukraine_aid: 29.7, argentina_aid: -41.3, obamacare: 23.8, trump_overall: -3.1, trump_jobs: -8.4, trump_inflation: -24.8, trump_immigration: 8.4, trump_foreign: -4.8, generic_ballot: -4.8},
+            {state: "Oklahoma", democracy_world: -7.2, israel_aid: 10.8, ukraine_aid: 23.7, argentina_aid: -42.4, obamacare: 14.8, trump_overall: 17.8, trump_jobs: 14.7, trump_inflation: -8.2, trump_immigration: 20.8, trump_foreign: 14.3, generic_ballot: -17.1},
+            {state: "Oregon", democracy_world: 14.8, israel_aid: -12.8, ukraine_aid: 42.1, argentina_aid: -32.4, obamacare: 37.4, trump_overall: -21.8, trump_jobs: -24.4, trump_inflation: -39.6, trump_immigration: -12.1, trump_foreign: -19.8, generic_ballot: 14.7},
+            {state: "Pennsylvania", democracy_world: 5.8, israel_aid: -6.1, ukraine_aid: 38.9, argentina_aid: -37.8, obamacare: 29.8, trump_overall: -16.2, trump_jobs: -18.2, trump_inflation: -35.2, trump_immigration: -4.2, trump_foreign: -15.2, generic_ballot: 7.1},
+            {state: "Rhode Island", democracy_world: 15.8, israel_aid: -13.8, ukraine_aid: 42.8, argentina_aid: -32.1, obamacare: 39.4, trump_overall: -23.7, trump_jobs: -26.3, trump_inflation: -41.2, trump_immigration: -13.8, trump_foreign: -21.1, generic_ballot: 16.2},
+            {state: "South Carolina", democracy_world: 2.4, israel_aid: 2.8, ukraine_aid: 32.8, argentina_aid: -37.1, obamacare: 25.4, trump_overall: -4.8, trump_jobs: -7.4, trump_inflation: -22.8, trump_immigration: 4.4, trump_foreign: -3.2, generic_ballot: -1.4},
+            {state: "South Dakota", democracy_world: -9.1, israel_aid: 14.8, ukraine_aid: 20.8, argentina_aid: -45.1, obamacare: 12.4, trump_overall: 21.8, trump_jobs: 18.7, trump_inflation: -4.2, trump_immigration: 24.8, trump_foreign: 17.6, generic_ballot: -20.4},
+            {state: "Tennessee", democracy_world: -2.4, israel_aid: 7.8, ukraine_aid: 27.8, argentina_aid: -40.1, obamacare: 19.8, trump_overall: 11.8, trump_jobs: 8.7, trump_inflation: -12.2, trump_immigration: 14.2, trump_foreign: 8.7, generic_ballot: -10.4},
+            {state: "Texas", democracy_world: 8.4, israel_aid: 2.1, ukraine_aid: 36.9, argentina_aid: -32.8, obamacare: 30.8, trump_overall: -4.7, trump_jobs: -10.2, trump_inflation: -27.2, trump_immigration: 10.2, trump_foreign: -7.2, generic_ballot: -1.4},
+            {state: "Utah", democracy_world: -0.8, israel_aid: 1.8, ukraine_aid: 30.7, argentina_aid: -38.2, obamacare: 24.2, trump_overall: 2.8, trump_jobs: -0.5, trump_inflation: -17.1, trump_immigration: 7.1, trump_foreign: 0.7, generic_ballot: -4.8},
+            {state: "Vermont", democracy_world: 20.8, israel_aid: -19.2, ukraine_aid: 48.1, argentina_aid: -28.4, obamacare: 46.2, trump_overall: -37.8, trump_jobs: -40.3, trump_inflation: -55.1, trump_immigration: -27.1, trump_foreign: -34.7, generic_ballot: 22.8},
+            {state: "Virginia", democracy_world: 12.4, israel_aid: -9.2, ukraine_aid: 40.1, argentina_aid: -34.8, obamacare: 35.8, trump_overall: -19.4, trump_jobs: -22.1, trump_inflation: -37.2, trump_immigration: -10.7, trump_foreign: -17.4, generic_ballot: 14.8},
+            {state: "Washington", democracy_world: 16.7, israel_aid: -13.1, ukraine_aid: 44.2, argentina_aid: -31.7, obamacare: 39.1, trump_overall: -24.1, trump_jobs: -26.7, trump_inflation: -41.6, trump_immigration: -14.1, trump_foreign: -21.8, generic_ballot: 16.7},
+            {state: "West Virginia", democracy_world: -10.2, israel_aid: 16.4, ukraine_aid: 19.8, argentina_aid: -46.1, obamacare: 10.8, trump_overall: 26.8, trump_jobs: 23.7, trump_inflation: 0.2, trump_immigration: 28.2, trump_foreign: 21.7, generic_ballot: -22.4},
+            {state: "Wisconsin", democracy_world: 1.2, israel_aid: -8.4, ukraine_aid: 32.1, argentina_aid: -38.2, obamacare: 26.4, trump_overall: -12.4, trump_jobs: -14.1, trump_inflation: -31.1, trump_immigration: 1.2, trump_foreign: -11.1, generic_ballot: 5.2},
+            {state: "Wyoming", democracy_world: -11.2, israel_aid: 17.8, ukraine_aid: 18.4, argentina_aid: -47.1, obamacare: 9.8, trump_overall: 29.7, trump_jobs: 26.7, trump_inflation: 3.2, trump_immigration: 30.8, trump_foreign: 24.3, generic_ballot: -23.8}
+        ];
+
+        let currentMetric = 'democracy_world';
+
+        function initializeMap() {
+            updateMap(currentMetric);
+            
+            document.getElementById('metric-select').addEventListener('change', function() {
+                currentMetric = this.value;
+                updateMap(currentMetric);
+            });
+        }
+
+        function updateMap(metric) {
+            const metricTitles = {
+                'democracy_world': 'Promote Democracy Worldwide',
+                'israel_aid': 'Military Aid to Israel',
+                'ukraine_aid': 'Military Aid to Ukraine',
+                'argentina_aid': 'US Aid to Argentina',
+                'obamacare': 'Obamacare Approval',
+                'trump_overall': 'Trump Overall Approval',
+                'trump_jobs': 'Trump Jobs/Economy Approval',
+                'trump_inflation': 'Trump Inflation Approval',
+                'trump_immigration': 'Trump Immigration Approval',
+                'trump_foreign': 'Trump Foreign Policy Approval',
+                'generic_ballot': 'Generic Congressional Ballot'
+            };
+            
+            const data = [{
+                type: 'choropleth',
+                locations: stateData.map(d => d.state),
+                z: stateData.map(d => d[metric]),
+                locationmode: 'USA-states',
+                text: stateData.map(d => `${d.state}<br>${metricTitles[metric]}: ${d[metric].toFixed(1)}%`),
+                hoverinfo: 'text',
+                colorscale: [
+                    [0, 'rgb(178, 24, 43)'],    // Strong Republican/Against
+                    [0.25, 'rgb(214, 96, 77)'], // Lean Republican/Against
+                    [0.5, 'rgb(244, 244, 244)'], // Neutral
+                    [0.75, 'rgb(67, 147, 195)'], // Lean Democratic/Support
+                    [1, 'rgb(33, 102, 172)']    // Strong Democratic/Support
+                ],
+                colorbar: {
+                    title: 'Margin (%)',
+                    titleside: 'right'
+                },
+                zmin: -60,
+                zmax: 60
+            }];
+            
+            const layout = {
+                title: `${metricTitles[metric]}<br><sub>Positive = Democratic/Support, Negative = Republican/Oppose</sub>`,
+                geo: {
+                    scope: 'usa',
+                    projection: { type: 'albers usa' },
+                    showlakes: true,
+                    lakecolor: 'rgb(255, 255, 255)'
+                },
+                height: 500
+            };
+            
+            Plotly.newPlot('map', data, layout, { responsive: true });
+            
+            // Update state table
+            updateStateTable(metric);
+        }
+
+        function updateStateTable(metric) {
+            const sortedStates = [...stateData].sort((a, b) => b[metric] - a[metric]);
+            const tableBody = document.getElementById('state-table-body');
+            tableBody.innerHTML = '';
+            
+            sortedStates.slice(0, 20).forEach((state, index) => {
+                const row = document.createElement('tr');
+                const value = state[metric];
+                const color = value > 0 ? '#2166ac' : value < 0 ? '#b2182b' : '#777';
+                
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${state.state}</td>
+                    <td style="color: ${color}; font-weight: bold">${value > 0 ? '+' : ''}${value.toFixed(1)}%</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeMap);
+    </script>
+</body>
+</html>
