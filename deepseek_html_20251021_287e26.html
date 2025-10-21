@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>State Polling Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: Arial, margin: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .controls { margin: 20px 0; text-align: center; }
+        select { padding: 10px; font-size: 16px; margin: 0 10px; }
+        .map-container { height: 500px; }
+        .state-table { margin-top: 30px; width: 100%; border-collapse: collapse; }
+        .state-table th, .state-table td { padding: 8px; text-align: center; border: 1px solid #ddd; }
+        .state-table th { background: #f4f4f4; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>State Polling Analysis Dashboard</h1>
+        
+        <div class="controls">
+            <label><strong>Select Metric:</strong></label>
+            <select id="metric-select">
+                <option value="democracy_world">Promote Democracy Worldwide</option>
+                <option value="israel_aid">Military Aid to Israel</option>
+                <option value="ukraine_aid">Military Aid to Ukraine</option>
+                <option value="argentina_aid">US Aid to Argentina</option>
+                <option value="obamacare">Obamacare Approval</option>
+                <option value="trump_overall">Trump Overall Approval</option>
+                <option value="trump_jobs">Trump Jobs Approval</option>
+                <option value="trump_inflation">Trump Inflation Approval</option>
+                <option value="trump_immigration">Trump Immigration Approval</option>
+                <option value="trump_foreign">Trump Foreign Policy Approval</option>
+                <option value="generic_ballot">Generic Congressional Ballot</option>
+            </select>
+        </div>
+
+        <div id="map" class="map-container"></div>
+        
+        <div id="state-details">
+            <h3>State Rankings</h3>
+            <table class="state-table" id="state-table">
+                <thead>
+                    <tr>
+                        <th>State</th>
+                        <th>Value</th>
+                        <th>Rank</th>
+                    </tr>
+                </thead>
+                <tbody id="state-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="map.js"></script>
+</body>
+</html>
